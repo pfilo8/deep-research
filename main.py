@@ -1,6 +1,12 @@
-def main():
-    print("Hello from deep-research!")
+import asyncio
+
+from src.manager import ResearchManager
+
+
+async def main() -> None:
+    query = input("What would you like to research? ")
+    await ResearchManager().run(query)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
