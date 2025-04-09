@@ -2,6 +2,7 @@ import asyncio
 import os
 import time
 import aiofiles
+import datetime
 
 from agents import Runner, custom_span, gen_trace_id, trace
 from dotenv import load_dotenv
@@ -29,7 +30,11 @@ class ResearchManager:
         self.printer = Printer(self.console)
         self.trace_id = gen_trace_id()
 
-        self.results_dir = os.path.join("results", self.trace_id)
+        current_time = datetime.datetime.now()
+        timestamp = current_time.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Create results directory with timestamp prefix
+        self.results_dir = os.path.join("results", f"{timestamp}_{self.trace_id}")
         os.makedirs(self.results_dir, exist_ok=True)
 
         # Create dedicated search results directory

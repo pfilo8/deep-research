@@ -76,7 +76,7 @@ INSTRUCTIONS = (
     "words. Capture the main points. Write succinctly, no need to have complete sentences or good "
     "grammar. This will be consumed by someone synthesizing a report, so its vital you capture the "
     "essence and ignore any fluff. Do not include any additional commentary other than the summary "
-    "itself."
+    "itself. Make sure that you don't mess up any proper names like company name."
 )
 
 search_agent = Agent(
