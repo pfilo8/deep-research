@@ -45,7 +45,6 @@ class ResearchManager:
 
             final_report = f"Report summary\n\n{report.short_summary}"
             self.printer.update_item("final_report", final_report, is_done=True)
-
             self.printer.end()
 
         print("\n\n=====REPORT=====\n\n")

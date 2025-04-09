@@ -1,20 +1,70 @@
+from duckduckgo_search import DDGS
+import requests
+from bs4 import BeautifulSoup
+from typing import Optional
+
 from agents import Agent, function_tool
 from agents.model_settings import ModelSettings
 
-from smolagents.default_tools import DuckDuckGoSearchTool
+
+def extract_page_content(url: str) -> Optional[str]:
+    """
+    Extracts the main content from a web page.
+
+    Args:
+        url: The URL of the page to extract content from.
+
+    Returns:
+        The extracted text content or None if extraction fails.
+    """
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+
+        # Get text
+        text = soup.get_text()
+
+        # Break into lines and remove leading and trailing space
+        lines = (line.strip() for line in text.splitlines())
+        # Break multi-headlines into a line each
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        # Drop blank lines
+        text = " ".join(chunk for chunk in chunks if chunk)
+
+        return text
+    except Exception as e:
+        print(f"Error extracting content from {url}: {str(e)}")
+        return None
 
 
 @function_tool
-def web_search(query: str):
+def web_search(query: str) -> str:
     """
-    Performs a duckduckgo web search based on your query (think a Google search) then returns the top search results.
+    Performs a duckduckgo web search based on your query (think a Google search) then returns the top search results
+    and attempts to extract content from the first result.
 
     Args:
         query: The search query to perform.
     """
-    ddgs = DuckDuckGoSearchTool(max_results=5)
-    results = ddgs(query)
-    return results
+    ddgs = DDGS()
+    results = ddgs.text(query, max_results=1)
+    if len(results) == 0:
+        raise Exception("No results found! Try a less restrictive/shorter query.")
+
+    result = results[0]
+    page_content = extract_page_content(result["href"])
+
+    postprocessed_result = f"[{result['title']}]({result['href']})\n{result['body']}"
+
+    if page_content:
+        postprocessed_result += f"\n\n## Page Content\n\n{page_content}"
+
+    return "## Search Results\n\n" + postprocessed_result
 
 
 INSTRUCTIONS = (
