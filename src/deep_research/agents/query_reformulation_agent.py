@@ -1,7 +1,8 @@
 from pydantic import BaseModel
 
 from agents import Agent
-from src.agents.guardrails import input_validation_guardrail, research_input_guardrail
+from deep_research.guardrails.input_validation import input_validation_guardrail
+from deep_research.guardrails.research_guardrails import research_input_guardrail
 
 INSTRUCTIONS = (
     "You are a helpful research assistant. Analyze the provided search query,"

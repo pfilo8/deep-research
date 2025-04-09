@@ -1,15 +1,24 @@
 import asyncio
+import os
 import time
+import aiofiles
 
+from agents import Runner, custom_span, gen_trace_id, trace
 from dotenv import load_dotenv
 from rich.console import Console
 
-from agents import Runner, custom_span, gen_trace_id, trace
-from src.agents.planner_agent import WebSearchItem, WebSearchPlan, planner_agent
-from src.agents.query_reformulation_agent import query_reformulation_agent
-from src.agents.search_agent import search_agent
-from src.agents.writer_agent import ReportData, writer_agent
-from src.printer import Printer
+from deep_research.agents.planner_agent import (
+    WebSearchItem,
+    WebSearchPlan,
+    planner_agent,
+)
+from deep_research.agents.query_reformulation_agent import query_reformulation_agent
+from deep_research.agents.search_agent import (
+    search_agent,
+    search_output_validation_agent,
+)
+from deep_research.agents.writer_agent import ReportData, writer_agent
+from printer import Printer
 
 load_dotenv()
 
@@ -18,13 +27,16 @@ class ResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
+        self.trace_id = gen_trace_id()
+
+        self.results_dir = os.path.join("results", self.trace_id)
+        os.makedirs(self.results_dir, exist_ok=True)
 
     async def run(self, query: str) -> None:
-        trace_id = gen_trace_id()
-        with trace("Research trace", trace_id=trace_id):
+        with trace("Research trace", trace_id=self.trace_id):
             self.printer.update_item(
                 "trace_id",
-                f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
+                f"View trace: https://platform.openai.com/traces/trace?trace_id={self.trace_id}",
                 is_done=True,
                 hide_checkmark=True,
             )
@@ -90,10 +102,11 @@ class ResearchManager:
                 asyncio.create_task(self._search(item)) for item in search_plan.searches
             ]
             results = []
-            for task in asyncio.as_completed(tasks):
+            for i, task in enumerate(asyncio.as_completed(tasks)):
                 result = await task
                 if result is not None:
                     results.append(result)
+                    await self._save_search_result(i, result)
                 num_completed += 1
                 self.printer.update_item(
                     "searching", f"Searching... {num_completed}/{len(tasks)} completed"
@@ -108,9 +121,27 @@ class ResearchManager:
                 search_agent,
                 input,
             )
+
+            # Agent for the validation whether search results were successful.
+            # Unfortunately due to rate limits of Duck Duck Go results are limited.
+            # Search agent hallucinations then and we want to avoid that.
+            validation = await Runner.run(
+                search_output_validation_agent, result.final_output
+            )
+
+            if not validation.final_output.successful_search:
+                print("The search results were unsuccessful.")
+                return None
             return str(result.final_output)
+
         except Exception:
             return None
+
+    async def _save_search_result(self, index: int, result: str) -> None:
+        """Save a search result to a file in the results directory asynchronously."""
+        filename = os.path.join(self.results_dir, f"search_result_{index}.txt")
+        async with aiofiles.open(filename, "w", encoding="utf-8") as f:
+            await f.write(result)
 
     async def _write_report(self, query: str, search_results: list[str]) -> ReportData:
         self.printer.update_item("writing", "Thinking about report...")

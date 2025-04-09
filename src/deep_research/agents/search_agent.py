@@ -1,7 +1,10 @@
-from duckduckgo_search import DDGS
 import requests
+from duckduckgo_search import DDGS
+
 from bs4 import BeautifulSoup
 from typing import Optional
+
+from pydantic import BaseModel
 
 from agents import Agent, function_tool
 from agents.model_settings import ModelSettings
@@ -82,4 +85,17 @@ search_agent = Agent(
     model="gpt-4o-mini",
     tools=[web_search],
     model_settings=ModelSettings(tool_choice="required"),
+)
+
+
+class SearchAgentOutputValidation(BaseModel):
+    reasoning: str
+    successful_search: bool
+
+
+search_output_validation_agent = Agent(
+    name="Search Output Validation Agent",
+    instructions="You evaluate a summary of search. You need to decide whether the search was successful.",
+    model="gpt-4o-mini",
+    output_type=SearchAgentOutputValidation,
 )
