@@ -18,7 +18,7 @@ from deep_research.agents.search_agent import (
     search_output_validation_agent,
 )
 from deep_research.agents.writer_agent import ReportData, writer_agent
-from printer import Printer
+from utils.printer import Printer
 
 load_dotenv()
 
@@ -31,6 +31,10 @@ class ResearchManager:
 
         self.results_dir = os.path.join("results", self.trace_id)
         os.makedirs(self.results_dir, exist_ok=True)
+
+        # Create dedicated search results directory
+        self.search_results_dir = os.path.join(self.results_dir, "searches")
+        os.makedirs(self.search_results_dir, exist_ok=True)
 
     async def run(self, query: str) -> None:
         with trace("Research trace", trace_id=self.trace_id):
@@ -54,6 +58,12 @@ class ResearchManager:
             report: ReportData = await self._write_report(
                 reformulated_query, search_results
             )
+
+            self.printer.update_item(
+                "saving", "Saving final report and follow-up questions..."
+            )
+            await self._save_final_report(report)
+            self.printer.mark_item_done("saving")
 
             final_report = f"Report summary\n\n{report.short_summary}"
             self.printer.update_item("final_report", final_report, is_done=True)
@@ -137,12 +147,6 @@ class ResearchManager:
         except Exception:
             return None
 
-    async def _save_search_result(self, index: int, result: str) -> None:
-        """Save a search result to a file in the results directory asynchronously."""
-        filename = os.path.join(self.results_dir, f"search_result_{index}.txt")
-        async with aiofiles.open(filename, "w", encoding="utf-8") as f:
-            await f.write(result)
-
     async def _write_report(self, query: str, search_results: list[str]) -> ReportData:
         self.printer.update_item("writing", "Thinking about report...")
         input = f"Original query: {query}\nSummarized search results: {search_results}"
@@ -170,3 +174,30 @@ class ResearchManager:
 
         self.printer.mark_item_done("writing")
         return result.final_output_as(ReportData)
+
+    async def _save_search_result(self, index: int, result: str) -> None:
+        """Save a search result to a file in the search results directory asynchronously."""
+        filename = os.path.join(self.search_results_dir, f"search_result_{index}.txt")
+        async with aiofiles.open(filename, "w", encoding="utf-8") as f:
+            await f.write(result)
+
+    async def _save_final_report(self, report: ReportData) -> None:
+        """Save the final report to a file in the results directory asynchronously."""
+        # Save markdown report
+        report_path = os.path.join(self.results_dir, "final_report.md")
+        async with aiofiles.open(report_path, "w", encoding="utf-8") as f:
+            await f.write(report.markdown_report)
+
+        # Save follow-up questions
+        questions_path = os.path.join(self.results_dir, "follow_up_questions.txt")
+        async with aiofiles.open(questions_path, "w", encoding="utf-8") as f:
+            await f.write("\n".join(report.follow_up_questions))
+
+        self.printer.update_item(
+            "saving",
+            f"Report saved to: {report_path}\nFollow-up questions saved to: {questions_path}",
+            is_done=True,
+        )
+
+        print(f"\nReport saved to: {report_path}")
+        print(f"Follow-up questions saved to: {questions_path}")
