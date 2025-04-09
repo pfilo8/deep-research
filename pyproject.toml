@@ -1,7 +1,7 @@
 [project]
 name = "deep-research"
 version = "0.1.0"
-description = "Add your description here"
+description = "Project focused on the exploration of deep research use case using OpenAI Agents library."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -11,4 +11,5 @@ dependencies = [
     "openai-agents>=0.0.9",
     "pydantic>=2.11.3",
     "rich>=14.0.0",
+    "smolagents>=1.13.0",
 ]

@@ -1,5 +1,21 @@
-from agents import Agent, WebSearchTool
+from agents import Agent, function_tool
 from agents.model_settings import ModelSettings
+
+from smolagents.default_tools import DuckDuckGoSearchTool
+
+
+@function_tool
+def web_search(query: str):
+    """
+    Performs a duckduckgo web search based on your query (think a Google search) then returns the top search results.
+
+    Args:
+        query: The search query to perform.
+    """
+    ddgs = DuckDuckGoSearchTool(max_results=5)
+    results = ddgs(query)
+    return results
+
 
 INSTRUCTIONS = (
     "You are a research assistant. Given a search term, you search the web for that term and "
@@ -13,6 +29,7 @@ INSTRUCTIONS = (
 search_agent = Agent(
     name="Search agent",
     instructions=INSTRUCTIONS,
-    tools=[WebSearchTool()],
+    model="gpt-4o-mini",
+    tools=[web_search],
     model_settings=ModelSettings(tool_choice="required"),
 )

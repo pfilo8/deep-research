@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 
 from agents import Agent
-from src.agents.guardrails import research_input_guardrail
 
 INSTRUCTIONS = (
     "You are a helpful research assistant. Given a query, come up with a set of web searches "
@@ -25,7 +24,6 @@ class WebSearchPlan(BaseModel):
 planner_agent = Agent(
     name="PlannerAgent",
     instructions=INSTRUCTIONS,
-    model="gpt-4o",
+    model="gpt-4o-mini",
     output_type=WebSearchPlan,
-    input_guardrails=[research_input_guardrail],
 )

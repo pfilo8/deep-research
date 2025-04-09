@@ -4,7 +4,7 @@ from src.manager import ResearchManager
 
 
 async def main() -> None:
-    query = input("What would you like to research? ")
+    query = input("Q: What would you like to research?\nA: ")
     await ResearchManager().run(query)
 
 

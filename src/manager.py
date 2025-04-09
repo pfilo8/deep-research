@@ -1,16 +1,15 @@
 import asyncio
 import time
 
+from dotenv import load_dotenv
 from rich.console import Console
 
 from agents import Runner, custom_span, gen_trace_id, trace
-
 from src.agents.planner_agent import WebSearchItem, WebSearchPlan, planner_agent
+from src.agents.query_reformulation_agent import query_reformulation_agent
 from src.agents.search_agent import search_agent
 from src.agents.writer_agent import ReportData, writer_agent
 from src.printer import Printer
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -37,9 +36,12 @@ class ResearchManager:
                 hide_checkmark=True,
             )
 
-            search_plan: WebSearchPlan = await self._plan_searches(query)
+            reformulated_query: str = await self._query_reformulation(query)
+            search_plan: WebSearchPlan = await self._plan_searches(reformulated_query)
             search_results: list[str] = await self._perform_searches(search_plan)
-            report: ReportData = await self._write_report(query, search_results)
+            report: ReportData = await self._write_report(
+                reformulated_query, search_results
+            )
 
             final_report = f"Report summary\n\n{report.short_summary}"
             self.printer.update_item("final_report", final_report, is_done=True)
@@ -51,6 +53,22 @@ class ResearchManager:
         print("\n\n=====FOLLOW UP QUESTIONS=====\n\n")
         follow_up_questions = "\n".join(report.follow_up_questions)
         print(f"Follow up questions: {follow_up_questions}")
+
+    async def _query_reformulation(self, query: str) -> str:
+        self.printer.update_item(
+            "query_reformulation", f"Reformulating the query: {query}."
+        )
+        result = await Runner.run(
+            query_reformulation_agent,
+            f"Query: {query}",
+        )
+
+        self.printer.update_item(
+            "query_reformulation",
+            f"Reformulated query: {result.final_output.query}",
+            is_done=True,
+        )
+        return result.final_output.query
 
     async def _plan_searches(self, query: str) -> WebSearchPlan:
         self.printer.update_item("planning", "Planning searches...")
